@@ -170,7 +170,16 @@ def batchnorm_forward(x, gamma, beta, bn_param):
         # variance, storing your result in the running_mean and running_var   #
         # variables.                                                          #
         #######################################################################
-        pass
+        sample_mean = np.mean(x,axis=0)
+        sample_var = np.var(x,axis=0)
+        xmu = x - sample_mean
+        sqrtvar = np.sqrt(sample_var + eps)
+        ivar = 1/sqrtvar        
+        xhat = xmu*ivar
+        out = xhat*gamma + beta
+        cache = (x, gamma, beta, eps, xmu, sample_var, sqrtvar, ivar, xhat)
+        running_mean = momentum * running_mean + (1 - momentum) * sample_mean
+        running_var = momentum * running_var + (1 - momentum) * sample_var
         #######################################################################
         #                           END OF YOUR CODE                          #
         #######################################################################
@@ -181,7 +190,8 @@ def batchnorm_forward(x, gamma, beta, bn_param):
         # then scale and shift the normalized data using gamma and beta.      #
         # Store the result in the out variable.                               #
         #######################################################################
-        pass
+        out = (x - running_mean)/np.sqrt(running_var + eps)*gamma + beta
+        
         #######################################################################
         #                          END OF YOUR CODE                           #
         #######################################################################
@@ -217,7 +227,21 @@ def batchnorm_backward(dout, cache):
     # TODO: Implement the backward pass for batch normalization. Store the    #
     # results in the dx, dgamma, and dbeta variables.                         #
     ###########################################################################
-    pass
+    x, gamma, beta, eps, xmu, var, sqrtvar, ivar, xhat = cache
+    dbeta = np.sum(dout,axis=0) 
+    dgamma = np.sum(dout * xhat,axis=0)
+    dxhat = dout*gamma
+    dxmu1 = dxhat*ivar
+    divar = np.sum(dxhat * xmu,axis=0)
+    dsqrtvar = -1*sqrtvar**-2 * divar
+    dvar = 0.5*(var+eps)**-0.5 * dsqrtvar
+    dsq = 1/x.shape[0]*np.ones_like(x)*dvar
+    dxmu2 = 2*xmu * dsq
+    dx1 = dxmu1 + dxmu2
+    du = -1*np.sum(dxmu1 + dxmu2,axis=0)
+    dx2= 1/x.shape[0]*np.ones_like(x)*du
+    dx = dx1 + dx2
+
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
