@@ -185,6 +185,14 @@ class FullyConnectedNet(object):
             else:
                 self.params[W_name] = weight_scale * np.random.randn(hidden_dims[n-1],hidden_dims[n])
                 self.params[b_name] = np.zeros(hidden_dims[n])
+                
+            if self.use_batchnorm:
+                if k < self.num_layers:
+                    gamma_name = 'gamma%d' % k
+                    beta_name = 'beta%d' % k
+                    self.params[gamma_name] = np.ones(hidden_dims[n])
+                    self.params[beta_name] = np.zeros(hidden_dims[n])
+                
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
@@ -246,14 +254,31 @@ class FullyConnectedNet(object):
         cache = {}
         for n in range(self.num_layers):
             k=n+1
-            W_name = 'W%d' % (k)
-            b_name = 'b%d' % (k)
+            W_name = 'W%d' % k
+            b_name = 'b%d' % k
+            gamma_name = 'gamma%d' % k
+            beta_name = 'beta%d' % k
             if n==0:
-                out[k], cache[k] = affine_relu_forward(X, self.params[W_name], self.params[b_name])
+                if self.use_batchnorm:
+                    #fc_x, fc_cache, bn_x, bn_cache, relu_cache = None, None, None, None, None
+                    fc_out, fc_cache = affine_forward(X, self.params[W_name], self.params[b_name])
+                    bn_out, bn_cache = batchnorm_forward(fc_out, self.params[gamma_name], self.params[beta_name], self.bn_params[n])
+                    out[k], relu_cache = relu_forward(bn_out)
+                    cache[k] = (fc_cache, bn_cache, relu_cache)
+                else:
+                    out[k], cache[k] = affine_relu_forward(X, self.params[W_name], self.params[b_name])
+                 
             elif n==(self.num_layers-1):
                 scores, cache[k] = affine_forward(out[n], self.params[W_name], self.params[b_name])
             else:
-                out[k], cache[k] = affine_relu_forward(out[n], self.params[W_name], self.params[b_name])
+                if self.use_batchnorm:
+                    #fc_x, fc_cache, bn_x, bn_cache, relu_cache = None, None, None, None, None
+                    fc_out, fc_cache = affine_forward(out[n], self.params[W_name], self.params[b_name])
+                    bn_out, bn_cache = batchnorm_forward(fc_out, self.params[gamma_name], self.params[beta_name], self.bn_params[n])
+                    out[k], relu_cache = relu_forward(bn_out)
+                    cache[k] = (fc_cache, bn_cache, relu_cache)
+                else:
+                    out[k], cache[k] = affine_relu_forward(out[n], self.params[W_name], self.params[b_name])
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
@@ -282,10 +307,18 @@ class FullyConnectedNet(object):
             k = self.num_layers-n
             W_name = 'W%d' % k
             b_name = 'b%d' % k
+            gamma_name = 'gamma%d' % k
+            beta_name = 'beta%d' % k
             if k==self.num_layers:
                 dout[k-1], grads[W_name], grads[b_name] = affine_backward(dout[k], cache[k])
             else:
-                dout[k-1], grads[W_name], grads[b_name] = affine_relu_backward(dout[k], cache[k])
+                if self.use_batchnorm:
+                    fc_cache, bn_cache, relu_cache = cache[k]
+                    dbn_out = relu_backward(dout[k], relu_cache)
+                    dfc_out, grads[gamma_name], grads[beta_name] = batchnorm_backward_alt(dbn_out, bn_cache)
+                    dout[k-1], grads[W_name], grads[b_name] = affine_backward(dfc_out, fc_cache)
+                else:
+                    dout[k-1], grads[W_name], grads[b_name] = affine_relu_backward(dout[k], cache[k])
             loss += 0.5 * self.reg * np.sum(self.params[W_name] **2)
             grads[W_name] += self.reg * self.params[W_name]
 
