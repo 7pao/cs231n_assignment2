@@ -271,7 +271,10 @@ def batchnorm_backward_alt(dout, cache):
     # should be able to compute gradients with respect to the inputs in a     #
     # single statement; our implementation fits on a single 80-character line.#
     ###########################################################################
-    pass
+    x, gamma, beta, eps, xmu, var, sqrtvar, ivar, xhat = cache
+    dbeta = np.sum(dout,axis=0) 
+    dgamma = np.sum(dout * xhat,axis=0)
+    dx = (dout + (2*xmu/x.shape[0] + -2/x.shape[0]**2*np.sum(xmu,axis=0))*np.sum(dout*-0.5*xmu/(var+eps),axis=0) + np.sum(dout*-1,axis=0)/x.shape[0]) * gamma * ivar
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
