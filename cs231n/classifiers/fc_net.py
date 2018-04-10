@@ -252,6 +252,7 @@ class FullyConnectedNet(object):
         ############################################################################
         out = {}
         cache = {}
+        drop_cache = {}
         for n in range(self.num_layers):
             k=n+1
             W_name = 'W%d' % k
@@ -267,6 +268,8 @@ class FullyConnectedNet(object):
                     cache[k] = (fc_cache, bn_cache, relu_cache)
                 else:
                     out[k], cache[k] = affine_relu_forward(X, self.params[W_name], self.params[b_name])
+                if self.use_dropout:
+                    out[k], drop_cache[k] = dropout_forward(out[k], self.dropout_param)
                  
             elif n==(self.num_layers-1):
                 scores, cache[k] = affine_forward(out[n], self.params[W_name], self.params[b_name])
@@ -279,6 +282,8 @@ class FullyConnectedNet(object):
                     cache[k] = (fc_cache, bn_cache, relu_cache)
                 else:
                     out[k], cache[k] = affine_relu_forward(out[n], self.params[W_name], self.params[b_name])
+                if self.use_dropout:
+                    out[k], drop_cache[k] = dropout_forward(out[k], self.dropout_param)
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
@@ -312,6 +317,8 @@ class FullyConnectedNet(object):
             if k==self.num_layers:
                 dout[k-1], grads[W_name], grads[b_name] = affine_backward(dout[k], cache[k])
             else:
+                if self.use_dropout:
+                    dout[k] = dropout_backward(dout[k], drop_cache[k])
                 if self.use_batchnorm:
                     fc_cache, bn_cache, relu_cache = cache[k]
                     dbn_out = relu_backward(dout[k], relu_cache)
@@ -319,6 +326,7 @@ class FullyConnectedNet(object):
                     dout[k-1], grads[W_name], grads[b_name] = affine_backward(dfc_out, fc_cache)
                 else:
                     dout[k-1], grads[W_name], grads[b_name] = affine_relu_backward(dout[k], cache[k])
+                
             loss += 0.5 * self.reg * np.sum(self.params[W_name] **2)
             grads[W_name] += self.reg * self.params[W_name]
 
