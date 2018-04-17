@@ -422,7 +422,24 @@ def conv_backward_naive(dout, cache):
     ###########################################################################
     # TODO: Implement the convolutional backward pass.                        #
     ###########################################################################
-    pass
+    x, w, b, conv_param = cache
+    stride = conv_param['stride']
+    pad = conv_param['pad']
+    N, C, H, W = x.shape
+    F, _, HH, WW = w.shape
+    _, _, H_out, W_out = dout.shape
+    x_pad = np.pad(x, ((0,), (0,), (pad,), (pad,)), 'constant', constant_values=0)
+    dx_pad = np.zeros((N, C, H+2*pad, W+2*pad))
+    dw = np.zeros_like(w)
+    db = np.zeros_like(b)
+    for height in range(H_out):
+        for width in range(W_out):
+            for num_filters in range(F):
+                dx_pad[:, :, height*stride : height*stride + HH, width*stride : width*stride + WW] += np.array(dout[:, num_filters, height, width]).reshape(N,1,1,1) * w[num_filters, :, :, :]
+                dw[num_filters, :, :, :] += np.sum( np.array(dout[:, num_filters, height, width]).reshape(N,1,1,1) * x_pad[:, :, height*stride : height*stride + HH, width*stride : width*stride + WW], axis=0 )
+                db[num_filters] +=  np.sum(dout[:, num_filters, height, width],axis=0)            
+    dx = dx_pad[:, :, pad:pad+H, pad:pad+W]
+
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
