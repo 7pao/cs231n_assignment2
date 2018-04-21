@@ -464,8 +464,17 @@ def max_pool_forward_naive(x, pool_param):
     out = None
     ###########################################################################
     # TODO: Implement the max pooling forward pass                            #
-    ###########################################################################
-    pass
+    ###########################################################################    
+    HH = pool_param['pool_height']
+    WW = pool_param['pool_width']
+    stride = pool_param['stride']
+    N, C, H, W = x.shape
+    H_out = 1 + (H-HH)//stride
+    W_out = 1+ (W-WW)//stride
+    out = np.zeros((N, C, H_out, W_out))
+    for height in range(H_out):
+        for width in range(W_out):
+            out[:, :, height, width] = np.ma.max(x[:, :, height*stride : height*stride + HH, width*stride : width*stride + WW], axis=(2,3))    
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
@@ -488,7 +497,19 @@ def max_pool_backward_naive(dout, cache):
     ###########################################################################
     # TODO: Implement the max pooling backward pass                           #
     ###########################################################################
-    pass
+    x, pool_param = cache
+    HH = pool_param['pool_height']
+    WW = pool_param['pool_width']
+    stride = pool_param['stride']
+    N, C, H, W = x.shape
+    _, _, H_out, W_out = dout.shape
+    dx = np.zeros_like(x)
+    for height in range(H_out):
+        for width in range(W_out):
+            sub_data = x[:, :, height*stride : height*stride + HH, width*stride : width*stride + WW]
+            mask = sub_data == np.ma.max(sub_data, axis=(2,3)).reshape(N,C,1,1)   # the reshape is important for broadcast
+            dx[:, :, height*stride : height*stride + HH, width*stride : width*stride + WW] = mask * dout[:, :, height, width].reshape(N,C,1,1)
+           
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
